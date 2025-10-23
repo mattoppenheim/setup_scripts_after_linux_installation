@@ -1,0 +1,75 @@
+#!/usr/bin/bash
+# copies settings and scripts from local machine to a remote machine
+# asks for password for the ssh key
+# Usage: ./remote_server_setup.sh <remote_username> <remote_ip> <ssh_keypath>
+# Example: ./remote_server_setup.sh fred 192.168.1.10 ~/.ssh/id_rsa_fred password123
+# Couldn't get sshpass to work
+
+REMOTE_USER="$1"
+REMOTE_IP="$2"
+SSH_KEY_PATH="$3"
+LOG_DIR="/var/log"
+LOG_PATH="$LOG_DIR/user_$1_remote_server_setup.log"
+SCRIPTS_FOR_REMOTE_PATH="$HOME/data/infolab2/progs/bash/debian_setup"
+SCRIPTS_FOR_REMOTE_PATH_2="$HOME/data/infolab2/progs/bash/server_setup"
+SETTINGS_FOR_REMOTE_PATH="$HOME/tmp/remote_settings"
+REMOTE_SETTINGS_PATH="/home/$REMOTE_USER/data/settings"
+REMOTE_SCRIPTS_PATH="/home/$REMOTE_USER/data/setup_scripts"
+
+LOG_AND_ECHO() {
+    echo "$1" | sudo tee -a "$LOG_PATH"
+}
+
+if [[ -z "$REMOTE_USER" || -z "$REMOTE_IP" || -z "$SSH_KEY_PATH" ]]; then
+    echo "Usage: $0 <remote_username> <remote_ip> <ssh_keypath>"
+    exit 1
+fi
+
+if [ ! -d $LOG_DIR ]; then
+    sudo mkdir -p $LOG_DIR && LOG_AND_ECHO "created $LOG_DIR"
+else
+    LOG_AND_ECHO "found log file: $LOG_PATH"
+fi
+
+echo "looking for $SETTINGS_FOR_REMOTE_PATH"
+if [ ! -d $SETTINGS_FOR_REMOTE_PATH ]; then
+    LOG_AND_ECHO "$SETTINGS_FOR_REMOTE_PATH missing, exiting"
+    exit 1
+else
+    LOG_AND_ECHO "found $SETTINGS_FOR_REMOTE_PATH"
+fi
+
+# couldn't get sshpass to work, script stalls
+# Use sshpass to provide the key password
+#if ! command -v sshpass &> /dev/null; then
+#    echo "sshpass is required but not installed. Please install it (e.g. sudo apt-get install sshpass)."
+#    exit 2
+#fi
+
+# Prompt for SSH key password without echoing input
+#read -s -p "Enter SSH key password: " SSH_KEY_PASSWORD
+
+
+# rsync can be configured to not overwrite an existing file
+# rsync -avz -e "ssh -i ~/.ssh/ionos/ionos_ssh.key" --ignore-existing $SOURCE_SETTINGS_DIR/vim/vimrc $REMOTE_USER@$REMOTE_IP:~/.vimrc
+
+# configuration scripts such as .vimrc are collated into a single directory
+# then scp'd over by running copy_settings_for_remote_server.sh
+# scp over settings
+# run create_softlinks.sh on remote server
+#
+
+ssh -i $SSH_KEY_PATH $REMOTE_USER@$REMOTE_IP -o StrictHostKeyChecking=no  "mkdir -p $REMOTE_SCRIPTS_PATH"
+echo "creating $REMOTE_SCRIPTS_PATH if it does not already exist"
+echo "copying setup scripts to $REMOTE_USER, overwriting files if they already exist"
+scp -i $SSH_KEY_PATH $SCRIPTS_FOR_REMOTE_PATH/* $REMOTE_USER@$REMOTE_IP:$REMOTE_SCRIPTS_PATH
+scp -i $SSH_KEY_PATH $SCRIPTS_FOR_REMOTE_PATH_2/* $REMOTE_USER@$REMOTE_IP:$REMOTE_SCRIPTS_PATH
+
+ssh -i $SSH_KEY_PATH $REMOTE_USER@$REMOTE_IP "mkdir -p $REMOTE_SETTINGS_PATH"
+echo "creating $REMOTE_SETTINGS_PATH if it does not already exist"
+echo "copying setup scripts to $REMOTE_USER, overwriting files if they already exist"
+scp -i $SSH_KEY_PATH $SETTINGS_FOR_REMOTE_PATH/* $REMOTE_USER@$REMOTE_IP:$REMOTE_SETTINGS_PATH
+
+
+
+
